@@ -71,6 +71,25 @@ def parse_args(component: Component, anchors: Dict[str, Component]):
     component.args.sort(key=lambda c: bool(c.default))
 
 
+def parse_result(component: Component, anchors: Dict[str, Component]):
+    result = component.result
+
+    for p in component.raw_desc:
+        links = [i for i in p.find_all("a") if i["href"].startswith("#")]
+        for phrase in p.text.replace(",", ".").split("."):
+            if "eturn" in phrase:
+                words = phrase.split()
+                for link in links:
+                    if link.text in words and p.text[0].isupper():
+                        if anc := anchors.get(link["href"], None):
+                            result.com_types.append(anc)
+                for alias, tp in const.STD_TYPES.items():
+                    if alias in words:
+                        result.std_types.append(tp)
+                if "rray of" in phrase:
+                    result.array = phrase.count("rray of")
+
+
 def parse_component(tag: Tag) -> Component:
     component = Component(
         name=tag.text,
@@ -112,10 +131,19 @@ def parse_headers(content: Tag) -> List[Header]:
                 tag=h3
             ))
     parse_components(headers)
-    anchors: Dict[str, Component] = {c.anchor: c for h in headers for c in h.components}
+    anchors: Dict[str, Component] = {
+        c.anchor: c
+        for h in headers
+        for c in h.components
+        if c.is_object
+    }
     for h in headers:
         for c in h.components:
             parse_args(c, anchors)
+            if c.is_path:
+                parse_result(c, anchors)
+        #         break
+        # break
     return headers
 
 

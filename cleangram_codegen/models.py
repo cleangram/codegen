@@ -69,7 +69,7 @@ class Argument:
         )
 
     def __bool__(self):
-        return bool(self.name)
+        return bool(self.std_types) or bool(self.com_types)
 
     def __hash__(self):
         return hash(self.name)
