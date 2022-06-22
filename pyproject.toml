@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "cleangram-codegen"
+name = "cleangram_codegen"
 version = "0.0.0.dev1"
 description = "Code generator for cleangram"
 authors = ["Arwichok <me@arwi.dev>"]
