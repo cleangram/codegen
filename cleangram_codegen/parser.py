@@ -1,11 +1,11 @@
 import re
-from typing import List, Optional
+from typing import List, Optional, Dict
 
+import h11
 import httpx
 from bs4 import BeautifulSoup, Tag
-from cleangram_codegen import comps
-
-from .models import Api, Header, Component
+from . import comps, const
+from .models import Api, Header, Component, Argument
 
 
 def get_content() -> Tag:
@@ -22,6 +22,53 @@ def parse_version(content: Tag) -> str:
         )\
         .text\
         .removeprefix("Bot API")
+
+
+def parse_args(component: Component, anchors: Dict[str, Component]):
+    """
+    Parse component arguments
+
+    :param component:
+    :return:
+    """
+    table = None
+    for sub in component.tag.next_siblings:  # type: Tag
+        if sub.name:
+            if sub.name == "table":
+                table = sub
+                break
+            elif sub.name == "h4":
+                return
+
+    # is table has 3 columns
+    three: bool = len(table.thead.find_all("th")) == 3
+
+    # parse rows
+    for tr in table.tbody.find_all("tr"):
+        td = tr.find_all("td")
+        desc: Tag = td[2] if three else td[3]
+        optional = "Optional" in td[2].text
+        arg = Argument(
+            name=td[0].text,
+            desc=desc,
+            array=td[1].text.count("rray of"),
+            optional=optional,
+            std_types=list({v for k, v in const.STD_TYPES.items() if k in td[1].text}),
+            com_types=[anchors[tag["href"]] for tag in td[1].findAll("a")],
+            default=(
+                em.text if (
+                        (em := desc.find("em")) and
+                        not optional and
+                        "must be" in desc.text
+                ) else None
+            ),
+            component=component
+        )
+        if "Field" in arg.class_value:
+            component.has_field = True
+        component.args.append(arg)
+    component.args.sort(key=lambda c: c.optional)
+    component.args.sort(key=lambda c: bool(c.default))
 
 
 def parse_component(tag: Tag) -> Component:
@@ -41,6 +88,16 @@ def parse_component(tag: Tag) -> Component:
     return component
 
 
+def parse_components(headers: List[Header]):
+    # Parse components by header
+    for head in headers:
+        for sub in head.tag.next_siblings:  # type: Tag
+            if sub.name == "h3":
+                break
+            if sub.name == "h4" and " " not in sub.text:
+                head.components.append(parse_component(sub))
+
+
 def parse_headers(content: Tag) -> List[Header]:
     # Parsing headers
     is_start: bool = False
@@ -54,16 +111,11 @@ def parse_headers(content: Tag) -> List[Header]:
                 anchor=h3.a["href"],
                 tag=h3
             ))
-
-    # Parse components by header
-    for head in headers:
-        for sub in head.tag.next_siblings:  # type: Tag
-            if sub.name == "h3":
-                break
-            if sub.name == "h4" and " " not in sub.text:
-                head.components.append(parse_component(sub))
-                break
-        break
+    parse_components(headers)
+    anchors: Dict[str, Component] = {c.anchor: c for h in headers for c in h.components}
+    for h in headers:
+        for c in h.components:
+            parse_args(c, anchors)
     return headers
 
 

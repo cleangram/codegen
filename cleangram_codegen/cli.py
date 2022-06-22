@@ -20,5 +20,9 @@ def parse():
     for h in api.headers:
         typer.echo(f"{h.name}")
         for c in h.components:
-            typer.echo(f"\t{c.name} {c.raw_desc}")
-        break
+            typer.echo(f"\t{c.name} {c.has_field}")
+            for a in c.args:
+                print(f"\t\t{a.field}: {a.annotation}{a.class_value}")
+                # typer.echo(f"\t\t{a.field}{a.class_value}")
+        #     break
+        # break
