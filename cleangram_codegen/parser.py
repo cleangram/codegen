@@ -25,12 +25,20 @@ def parse_version(content: Tag) -> str:
 
 
 def parse_component(tag: Tag) -> Component:
-    return Component(
+    component = Component(
         name=tag.text,
         anchor=tag.a["href"],
         tag=tag,
         parent=comps.TELEGRAM_OBJECT if tag.text.isupper() else comps.TELEGRAM_PATH
     )
+    for sub in tag.next_siblings:  # type: Tag
+        if sub.name and sub.text:
+            if sub.name == "h4":
+                break
+            if sub.name == "p":
+                component.desc.append(sub.text)
+                component.raw_desc.append(sub)
+    return component
 
 
 def parse_headers(content: Tag) -> List[Header]:
@@ -54,7 +62,8 @@ def parse_headers(content: Tag) -> List[Header]:
                 break
             if sub.name == "h4" and " " not in sub.text:
                 head.components.append(parse_component(sub))
-
+                break
+        break
     return headers
 
 

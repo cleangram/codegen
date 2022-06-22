@@ -27,6 +27,8 @@ class Component:
     result: Argument = field(repr=False, default_factory=Argument)
     _module: Optional[str] = field(default=None, repr=False)
     parent: Optional[Component] = None
+    desc: List[str] = field(default_factory=list)
+    raw_desc: List[Tag] = field(default_factory=list)
 
     @property
     def is_path(self):

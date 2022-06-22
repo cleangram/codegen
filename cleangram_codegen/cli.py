@@ -20,5 +20,5 @@ def parse():
     for h in api.headers:
         typer.echo(f"{h.name}")
         for c in h.components:
-            typer.echo(f"\t{c.name} {c.parent.name}")
+            typer.echo(f"\t{c.name} {c.raw_desc}")
         break
