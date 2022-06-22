@@ -1,3 +1,3 @@
-from ._version import __version__
+from .cli import cli
 
-print(__version__)
+cli()
