@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass as dc, field
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 from bs4 import Tag
 from cleangram_codegen.util import snake
@@ -19,11 +21,12 @@ class Argument:
 @dc
 class Component:
     name: str
-    anchor: str = field(repr=False)
-    tag: Tag = field(repr=False)
+    anchor: Optional[str] = field(default=None, repr=False)
+    tag: Optional[Tag] = field(default=None, repr=False)
     args: List[Argument] = field(default_factory=list, repr=False)
     result: Argument = field(repr=False, default_factory=Argument)
-    _module: str = field(default_factory=str, repr=False)
+    _module: Optional[str] = field(default=None, repr=False)
+    parent: Optional[Component] = None
 
     @property
     def is_path(self):

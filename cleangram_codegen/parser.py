@@ -3,6 +3,7 @@ from typing import List, Optional
 
 import httpx
 from bs4 import BeautifulSoup, Tag
+from cleangram_codegen import comps
 
 from .models import Api, Header, Component
 
@@ -27,7 +28,8 @@ def parse_component(tag: Tag) -> Component:
     return Component(
         name=tag.text,
         anchor=tag.a["href"],
-        tag=tag
+        tag=tag,
+        parent=comps.TELEGRAM_OBJECT if tag.text.isupper() else comps.TELEGRAM_PATH
     )
 
 
@@ -52,52 +54,6 @@ def parse_headers(content: Tag) -> List[Header]:
                 break
             if sub.name == "h4" and " " not in sub.text:
                 head.components.append(parse_component(sub))
-
-    # component: Optional[Component] = None
-    # header: Optional[Header] = None
-    # paragraph: str = ""
-
-    #
-    # for head in raw_headers:
-    #     print(head.text)
-    #     for sub in head.next_siblings:  # type: Tag
-    #         if sub.name == "h3":
-    #             break
-    #         if sub.name == "h4":
-    #             print("\t", sub.text)
-    #
-    #             break
-    #     break
-
-
-
-
-    # for tag in content.children:  # type: Tag
-    #     if tag.name is None:
-    #         continue
-    #     if tag.text == "Getting updates":
-    #         is_start = True
-    #     if is_start:
-    #         if tag.name == "h3":
-    #             component = None
-    #             headers.append((header := Header(name=tag.text)))
-    #         elif header:
-    #             if tag.name == "h4":
-    #                 header.components.append((current := Component(tag.text)))
-    # if current := parse_component(tag):
-    #     header.components.append(current)
-    #     elif current:
-    #         if tag.name == "p":
-    #             current.paragraphs.append(tag.text)
-    #             if isinstance(current, Path):
-    #                 if not current.result.types:
-    #                     current.result = parse_result(tag)
-    #         elif tag.name == "ul":
-    #             for sub in tag.find_all("li"):
-    #                 current.subclasses.append(sub.a["href"])
-    #         elif tag.name == "table":
-    #             current.args = parse_args(tag)
-    #             current = None
 
     return headers
 
