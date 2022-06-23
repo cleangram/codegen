@@ -117,6 +117,22 @@ def parse_components(headers: List[Header]):
                 head.components.append(parse_component(sub))
 
 
+def parse_subclasses(component: Component, anchors: Dict[str, Component]):
+    ul: Optional[Tag] = None
+    for sub in component.tag.next_siblings:  # type: Tag
+        if sub.name:
+            if sub.name in {"h4", "h3"}:
+                return
+            elif sub.name == "ul":
+                ul = sub
+                break
+    if ul:
+        for li in ul.find_all("li"):
+            sub_class = anchors[li.a["href"]]
+            sub_class.parent = component
+            component.subclasses.append(sub_class)
+
+
 def parse_headers(content: Tag) -> List[Header]:
     # Parsing headers
     is_start: bool = False
@@ -140,10 +156,10 @@ def parse_headers(content: Tag) -> List[Header]:
     for h in headers:
         for c in h.components:
             parse_args(c, anchors)
+            parse_subclasses(c, anchors)
             if c.is_path:
                 parse_result(c, anchors)
-        #         break
-        # break
+
     return headers
 
 

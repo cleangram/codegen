@@ -87,6 +87,7 @@ class Component:
     desc: List[str] = field(default_factory=list)
     raw_desc: List[Tag] = field(default_factory=list)
     has_field: bool = False
+    subclasses: List[Component] = field(default_factory=list)
 
     @property
     def is_path(self):
