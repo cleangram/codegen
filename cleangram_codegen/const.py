@@ -7,7 +7,7 @@ STD_TYPES = {
     "Int": "int",
     "Float": "float",
     "Boolean": "bool",
-    "Integer": "int"
+    "Integer": "int",
 }
 
 

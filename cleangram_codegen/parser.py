@@ -1,11 +1,12 @@
 import re
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 import h11
 import httpx
 from bs4 import BeautifulSoup, Tag
+
 from . import comps, const
-from .models import Api, Header, Component, Argument
+from .models import Api, Argument, Component, Header
 
 
 def get_content() -> Tag:
@@ -15,13 +16,9 @@ def get_content() -> Tag:
 
 
 def parse_version(content: Tag) -> str:
-    return content\
-        .find(
-            name="strong",
-            text=re.compile(r"^Bot API")
-        )\
-        .text\
-        .removeprefix("Bot API")
+    return content.find(name="strong", text=re.compile(r"^Bot API")).text.removeprefix(
+        "Bot API"
+    )
 
 
 def parse_args(component: Component, anchors: Dict[str, Component]):
@@ -56,13 +53,11 @@ def parse_args(component: Component, anchors: Dict[str, Component]):
             std_types=list({v for k, v in const.STD_TYPES.items() if k in td[1].text}),
             com_types=[anchors[tag["href"]] for tag in td[1].findAll("a")],
             default=(
-                em.text if (
-                        (em := desc.find("em")) and
-                        not optional and
-                        "must be" in desc.text
-                ) else None
+                em.text
+                if ((em := desc.find("em")) and not optional and "must be" in desc.text)
+                else None
             ),
-            component=component
+            component=component,
         )
         if "Field" in arg.class_value:
             component.has_field = True
@@ -95,7 +90,7 @@ def parse_component(tag: Tag) -> Component:
         name=tag.text,
         anchor=tag.a["href"],
         tag=tag,
-        parent=comps.TELEGRAM_OBJECT if tag.text.isupper() else comps.TELEGRAM_PATH
+        parent=comps.TELEGRAM_OBJECT if tag.text.isupper() else comps.TELEGRAM_PATH,
     )
     for sub in tag.next_siblings:  # type: Tag
         if sub.name and sub.text:
@@ -154,18 +149,17 @@ def parse_headers(content: Tag) -> List[Header]:
         if h3.text == "Getting updates":
             is_start = True
         if is_start:
-            headers.append(Header(
-                name=h3.text,
-                anchor=h3.a["href"],
-                tag=h3,
-                components=parse_components(h3)
-            ))
+            headers.append(
+                Header(
+                    name=h3.text,
+                    anchor=h3.a["href"],
+                    tag=h3,
+                    components=parse_components(h3),
+                )
+            )
     # crete dict of objects {"#update": Component(name="Update"), ...}
     anchors: Dict[str, Component] = {
-        c.anchor: c
-        for h in headers
-        for c in h.components
-        if c.is_object
+        c.anchor: c for h in headers for c in h.components if c.is_object
     }
     for h in headers:
         for c in h.components:
@@ -178,10 +172,6 @@ def parse_headers(content: Tag) -> List[Header]:
 
 def get_api() -> Api:
     content = get_content()
-    api = Api(
-        version=parse_version(content),
-        headers=parse_headers(content)
-    )
+    api = Api(version=parse_version(content), headers=parse_headers(content))
     process_input_media(api)
     return api
-

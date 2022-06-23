@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass as dc, field
+from dataclasses import dataclass as dc
+from dataclasses import field
 from functools import lru_cache
-from typing import List, Optional, Union, Set
+from typing import List, Optional, Set, Union
 
 from bs4 import Tag
 
@@ -58,19 +59,21 @@ class Argument:
         none = {"None"} if self.union and self.optional else set()
 
         return wrap(
-            "Optional", self.optional and not self.union, wrap(
-                "List", self.array == 2, wrap(
-                    "List", self.array, wrap(
+            "Optional",
+            self.optional and not self.union,
+            wrap(
+                "List",
+                self.array == 2,
+                wrap(
+                    "List",
+                    self.array,
+                    wrap(
                         "Union",
                         self.union,
-                        ", ".join(map(str, {
-                            *self.std_types,
-                            *self.com_types,
-                            *none
-                        }))
-                    )
-                )
-            )
+                        ", ".join(map(str, {*self.std_types, *self.com_types, *none})),
+                    ),
+                ),
+            ),
         )
 
     def __bool__(self):
@@ -152,7 +155,7 @@ class Component:
             for tp, val in {
                 "Optional": a.optional and not a.union,
                 "Union": a.union,
-                "List": a.array
+                "List": a.array,
             }.items()
             if val
         }
@@ -174,6 +177,7 @@ class Header:
     anchor: str
     tag: Tag
     components: List[Component] = field(default_factory=list)
+
 
 @dc
 class Api:

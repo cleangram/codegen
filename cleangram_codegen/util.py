@@ -12,7 +12,7 @@ def snake(text: str):
     :param text:
     :return:
     """
-    return "".join([w if w.islower() else "_" + w.lower() for w in text]).lstrip('_')
+    return "".join([w if w.islower() else "_" + w.lower() for w in text]).lstrip("_")
 
 
 def wrap(_type, _statement, _value):
