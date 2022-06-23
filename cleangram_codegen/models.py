@@ -135,3 +135,13 @@ class Header:
 class Api:
     version: str
     headers: List[Header]
+
+    @lru_cache()
+    def get_by_name(self, name: str) -> Component:
+        for h in self.headers:
+            for c in h.components:
+                if c.name == name:
+                    return c
+
+    def __hash__(self):
+        return hash(self.version)

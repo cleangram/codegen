@@ -133,6 +133,19 @@ def parse_subclasses(component: Component, anchors: Dict[str, Component]):
             component.subclasses.append(sub_class)
 
 
+def process_input_media(api: Api):
+    for h in api.headers:
+        for c in h.components:
+            if c.name.startswith("InputMedia"):
+                for a in c.args:
+                    if a.name == "media":
+                        a.com_types.append(api.get_by_name("InputFile"))
+            elif c.name == "sendMediaGroup":
+                for a in c.args:
+                    if a.name == "media":
+                        a.com_types = [api.get_by_name("InputMedia")]
+
+
 def parse_headers(content: Tag) -> List[Header]:
     # Parsing headers
     is_start: bool = False
@@ -147,6 +160,7 @@ def parse_headers(content: Tag) -> List[Header]:
                 tag=h3
             ))
     parse_components(headers)
+    # crete dict of objects {"#update": Component(name="Update"), ...}
     anchors: Dict[str, Component] = {
         c.anchor: c
         for h in headers
@@ -159,13 +173,15 @@ def parse_headers(content: Tag) -> List[Header]:
             parse_subclasses(c, anchors)
             if c.is_path:
                 parse_result(c, anchors)
-
     return headers
 
 
 def get_api() -> Api:
     content = get_content()
-    return Api(
+    api = Api(
         version=parse_version(content),
         headers=parse_headers(content)
     )
+    process_input_media(api)
+    return api
+
