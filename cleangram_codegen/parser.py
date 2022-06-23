@@ -17,17 +17,11 @@ def get_content() -> Tag:
 
 def parse_version(content: Tag) -> str:
     return content.find(name="strong", text=re.compile(r"^Bot API")).text.removeprefix(
-        "Bot API"
+        "Bot API "
     )
 
 
 def parse_args(component: Component, anchors: Dict[str, Component]):
-    """
-    Parse component arguments
-
-    :param component:
-    :return:
-    """
     table = None
     for sub in component.tag.next_siblings:  # type: Tag
         if sub.name:

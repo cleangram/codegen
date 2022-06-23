@@ -1,17 +1,24 @@
+import logging
 import pathlib
 from textwrap import wrap
 
 import typer
 
-from .const import CODE_DIR
 from .parser import get_api
+from .generator import Generator
 
 cli = typer.Typer()
+logging.basicConfig(level=logging.INFO)
 
 
 @cli.command(name="gen")
-def gen(path: str = typer.Argument(CODE_DIR)):
-    typer.echo(f"Generated to {pathlib.Path(path).absolute()}")
+def gen():
+    Generator(True).run()
+
+
+@cli.command(name="render")
+def render():
+    Generator(False).run()
 
 
 @cli.command(name="parse")

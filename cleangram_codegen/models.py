@@ -7,7 +7,7 @@ from typing import List, Optional, Set, Union
 
 from bs4 import Tag
 
-from .const import CategoryType
+from .enums import CategoryType
 from .util import snake, wrap
 
 
@@ -190,6 +190,16 @@ class Api:
             for c in h.components:
                 if c.name == name:
                     return c
+
+    @property
+    @lru_cache()
+    def paths(self):
+        return [c for h in self.headers for c in h.components if c.is_path]
+
+    @property
+    @lru_cache()
+    def objects(self):
+        return [c for h in self.headers for c in h.components if c.is_object]
 
     def __hash__(self):
         return hash(self.version)
