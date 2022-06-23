@@ -21,26 +21,8 @@ def parse():
     typer.echo(f"Version: {api.version}")
 
     for h in api.headers:
+        typer.echo(f"{h.name}")
         for c in h.components:
-            if c.name == "InputMedia":
-                for s in c.subclasses:
-                    typer.echo(s.name)
-                    for a in s.args:
-                        typer.echo(f"\t{a.name}: {a.annotation}{a.class_value}")
-
-        # typer.echo(f"{h.name}")
-        #     if c.subclasses:
-        #         typer.echo(f"{c}({c.parent})")
-        #         for s in c.subclasses:
-        #             typer.echo(f"\t{s}({s.parent})")
-            # if c.is_path:
-            #     typer.echo(f"\t{c.name} -> {c.result.annotation}")
-            #     for p in c.desc:
-            #         for w in wrap(p):
-            #             typer.echo(f"\t\t{w}")
-    #                 typer.echo()
-            # for a in c.args:
-            #     print(f"\t\t{a.field}: {a.annotation}{a.class_value}")
-                # typer.echo(f"\t\t{a.field}{a.class_value}")
-        #     break
-        # break
+            typer.echo(f"\t{c.name}({c.parent}){f' -> {c.result.annotation}' if c.is_path else ''}")
+            for a in c.args:
+                typer.echo(f"\t\t{a.name}: {a.annotation}{a.class_value}")

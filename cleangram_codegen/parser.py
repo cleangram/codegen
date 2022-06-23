@@ -112,8 +112,9 @@ def parse_components(header: Tag) -> List[Component]:
     for sub in header.next_siblings:  # type: Tag
         if sub.name == "h4" and " " not in sub.text:
             _comps.append(parse_component(sub))
-        elif sub.name == "h3":
-            return _comps
+        if sub.name == "h3":
+            break
+    return _comps
 
 
 def parse_subclasses(component: Component, anchors: Dict[str, Component]):
@@ -159,7 +160,6 @@ def parse_headers(content: Tag) -> List[Header]:
                 tag=h3,
                 components=parse_components(h3)
             ))
-    parse_components(headers)
     # crete dict of objects {"#update": Component(name="Update"), ...}
     anchors: Dict[str, Component] = {
         c.anchor: c
