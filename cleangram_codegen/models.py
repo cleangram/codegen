@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass as dc, field
 from functools import lru_cache
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Set
 
 from bs4 import Tag
 
@@ -49,8 +49,13 @@ class Argument:
 
     @property
     @lru_cache()
+    def method_value(self) -> str:
+        return "=None" if self.optional else ""
+
+    @property
+    @lru_cache()
     def annotation(self) -> str:
-        none = ["None"] if self.union and self.optional else []
+        none = {"None"} if self.union and self.optional else set()
 
         return wrap(
             "Optional", self.optional and not self.union, wrap(
@@ -58,11 +63,11 @@ class Argument:
                     "List", self.array, wrap(
                         "Union",
                         self.union,
-                        ", ".join(map(str, [
+                        ", ".join(map(str, {
                             *self.std_types,
                             *self.com_types,
                             *none
-                        ]))
+                        }))
                     )
                 )
             )
@@ -112,15 +117,55 @@ class Component:
         return CategoryType.OBJECT if self.name[0].isupper() else CategoryType.PATH
 
     @property
-    @lru_cache()
-    def module(self):
+    def module(self) -> str:
         return self._module if self._module else self.snake
+
+    @property
+    def args_objects(self) -> Set[Component]:
+        return {t for a in self.args for t in a.com_types if t != self}
+
+    @property
+    def result_objects(self) -> Set[Component]:
+        return {*self.result.com_types}
+
+    @property
+    def used_objects(self) -> Set[Component]:
+        return {*self.args_objects, *self.result_objects}
+
+    @property
+    def args_typing(self) -> Set[str]:
+        return self.get_typing(*self.args)
+
+    @property
+    def result_typing(self) -> Set[str]:
+        return self.get_typing(self.result)
+
+    @property
+    def used_typing(self) -> Set[str]:
+        return {*self.args_typing, *self.result_typing}
+
+    @staticmethod
+    def get_typing(*args: Argument):
+        return {
+            tp
+            for a in args
+            for tp, val in {
+                "Optional": a.optional and not a.union,
+                "Union": a.union,
+                "List": a.array
+            }.items()
+            if val
+        }
 
     def __hash__(self):
         return hash(self.name)
 
     def __str__(self):
         return self.camel
+
+    def __eq__(self, other):
+        if isinstance(other, Component):
+            return self.name == other.name
 
 
 @dc
@@ -129,7 +174,6 @@ class Header:
     anchor: str
     tag: Tag
     components: List[Component] = field(default_factory=list)
-
 
 @dc
 class Api:
