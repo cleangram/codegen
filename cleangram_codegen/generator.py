@@ -1,13 +1,15 @@
 import logging
 import os
 import pathlib
+from typing import List, Type
 
 import black
 import isort
 
-from .enums import PackageType
+from .enums import PackageType, CategoryType
+from .models import Component
 from .parser import get_api
-from .templates import Template, VersionTemplate
+from .templates import Template, VersionTemplate, ObjectTemplate, PathTemplate, ComponentTemplate
 
 
 def md(path: pathlib.Path):
@@ -28,18 +30,6 @@ class Generator:
         self.code = self.root / "cleangram"
         self.log = logging.getLogger("Generator")
 
-    def run(self):
-        self.gen_version()
-
-        for pt in PackageType:
-            md(self.code / pt.value)
-
-    def gen_version(self):
-        self._gen(
-            VersionTemplate(self.api),
-            self.code / "_version.py"
-        )
-
     def _gen(self, tmp: Template, path: pathlib.Path):
         # render
         txt = str(tmp)
@@ -53,8 +43,44 @@ class Generator:
                 self.log.exception(txt)
                 raise e
         if self.is_gen:
-            with(path, "w") as f:
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(txt)
                 self.log.info(path)
         else:
             self.log.info(f"{path}\n{txt}")
+
+    def gen_version(self):
+        self._gen(
+            VersionTemplate(self.api),
+            self.code / "_version.py"
+        )
+
+    def gen_init(self, pt: PackageType):
+        for ct in CategoryType:
+            path = self.code / pt.value / ct.value
+            md(path)
+            self._gen(Template(self.api), path / "__init__.py")
+
+    def gen_components(self, pt: PackageType):
+        for category, Tmp, components in (
+                (CategoryType.OBJECT, ObjectTemplate, self.api.objects),
+                (CategoryType.PATH, PathTemplate, self.api.paths)
+        ):
+            for com in components:
+                self._gen(
+                    Tmp(
+                        api=self.api,
+                        package=pt,
+                        com=com
+                    ),
+                    self.code / pt.value / category.value / f"{com.module}.py"
+                )
+                break  # render only first of object, path
+            # break
+
+    def run(self):
+        # self.gen_version()
+        for pt in PackageType:
+            # self.gen_init(pt)
+            self.gen_components(pt)
+            break

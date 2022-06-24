@@ -92,8 +92,7 @@ class Component:
     result: Argument = field(repr=False, default_factory=Argument)
     _module: Optional[str] = field(default=None, repr=False)
     parent: Optional[Component] = None
-    desc: List[str] = field(default_factory=list)
-    raw_desc: List[Tag] = field(default_factory=list)
+    desc: List[Tag] = field(default_factory=list)
     has_field: bool = False
     subclasses: List[Component] = field(default_factory=list)
 
@@ -146,6 +145,10 @@ class Component:
     @property
     def used_typing(self) -> Set[str]:
         return {*self.args_typing, *self.result_typing}
+
+    @property
+    def is_adjusted(self):
+        return self.name != "InputFile"
 
     @staticmethod
     def get_typing(*args: Argument):

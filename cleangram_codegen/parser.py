@@ -63,7 +63,7 @@ def parse_args(component: Component, anchors: Dict[str, Component]):
 def parse_result(component: Component, anchors: Dict[str, Component]):
     result = component.result
 
-    for p in component.raw_desc:
+    for p in component.desc:
         links = [i for i in p.find_all("a") if i["href"].startswith("#")]
         for phrase in p.text.replace(",", ".").split("."):
             if "eturn" in phrase:
@@ -84,15 +84,14 @@ def parse_component(tag: Tag) -> Component:
         name=tag.text,
         anchor=tag.a["href"],
         tag=tag,
-        parent=comps.TELEGRAM_OBJECT if tag.text.isupper() else comps.TELEGRAM_PATH,
+        parent=comps.TELEGRAM_OBJECT if tag.text[0].isupper() else comps.TELEGRAM_PATH,
     )
     for sub in tag.next_siblings:  # type: Tag
         if sub.name and sub.text:
             if sub.name == "h4":
                 break
             if sub.name == "p":
-                component.desc.append(sub.text)
-                component.raw_desc.append(sub)
+                component.desc.append(sub)
     return component
 
 

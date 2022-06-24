@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class CategoryType(Enum):
-    PATH: str = "path"
-    OBJECT: str = "object"
+    PATH: str = "paths"
+    OBJECT: str = "objects"
 
 
 class PackageType(Enum):
