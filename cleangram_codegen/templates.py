@@ -1,10 +1,12 @@
 import abc
+import contextlib
 import re
 from dataclasses import dataclass as dc, field
 from textwrap import wrap
 from typing import Union, List, Literal
 
-from .enums import PackageType
+from .comps import TELEGRAM_PATH, TELEGRAM_OBJECT
+from .enums import PackageType, CategoryType
 from .models import Api, Component
 
 
@@ -83,7 +85,6 @@ class PackageTemplate(Template):
 class ComponentTemplate(PackageTemplate, abc.ABC):
     com: Component = None
 
-    @abc.abstractmethod
     def header(self): ...
 
     @abc.abstractmethod
@@ -129,6 +130,7 @@ class ComponentTemplate(PackageTemplate, abc.ABC):
 @dc
 class ObjectTemplate(ComponentTemplate):
     def header(self):
+        super(ObjectTemplate, self).header()
         if self.is_core:
             self.i("from __future__ import annotations")
 
@@ -161,9 +163,6 @@ class ObjectTemplate(ComponentTemplate):
 
 @dc
 class PathTemplate(ComponentTemplate):
-    def header(self):
-        pass
-
     def declaration(self):
         extends = []
         if self.is_core:
@@ -172,14 +171,21 @@ class PathTemplate(ComponentTemplate):
             extends.append(self.com.parent.camel)
             extends.append("abc.ABC")
         else:
-            self.i(f"from ...core import {self.com.camel} as _{self.com.camel}")
+            self.i(f"from ...core.paths.{self.com.module} import {self.com.camel} as _{self.com.camel}")
             extends.append(f"_{self.com.camel}")
-            self.i("from .response import Response")
+            self.i("from ...core.objects.response import Response")
             self.write_typing(*self.com.result_typing)
             for tp in self.com.result_objects:
                 self.i(f"from ..objects import {tp.camel}")
             extends.append(f"response=Response[{self.com.result.annotation}]")
-        self.d(f"class {self.com.camel}({','.join(extends)}):")
+        self.d(f"class {self.com.camel}({','.join(extends)}):", nl=0)
+
+    def arguments(self):
+        super(PathTemplate, self).arguments()
+        if self.is_core:
+            self.write_typing(*self.com.args_typing)
+            for obj in self.com.args_objects:
+                self.i(f"from ..objects import {obj.camel}")
 
     def methods(self):
         pass
@@ -187,5 +193,30 @@ class PathTemplate(ComponentTemplate):
 
 @dc
 class InitComponentsTemplate(PackageTemplate):
-    coms: List[Component] = field(default_factory=list)
+    ct: CategoryType = None
 
+    def __post_init__(self):
+        super(InitComponentsTemplate, self).__post_init__()
+        coms = []
+        if self.ct == CategoryType.OBJECT:
+            coms = self.api.objects.copy()
+            coms.extend([
+                TELEGRAM_OBJECT
+            ])
+        elif self.ct == CategoryType.PATH:
+            coms = self.api.paths.copy()
+            coms.append(TELEGRAM_PATH)
+
+        coms.sort(key=str)
+
+        if self.is_core or self.ct == CategoryType.PATH:
+            for com in coms:
+                self.i(f"from .{com.module} import {com.camel}")
+        else:
+            for com in coms:
+                self.i(f"from ...core {com.camel}")
+
+        self.d("__all__ = [")
+        for com in coms:
+            self.d(f'{com.camel!r},', 1)
+        self.d("]")

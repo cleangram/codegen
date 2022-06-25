@@ -9,7 +9,8 @@ import isort
 from .enums import PackageType, CategoryType
 from .models import Component
 from .parser import get_api
-from .templates import Template, VersionTemplate, ObjectTemplate, PathTemplate, ComponentTemplate
+from .templates import Template, VersionTemplate, ObjectTemplate, PathTemplate, ComponentTemplate, \
+    InitComponentsTemplate
 
 
 def md(path: pathlib.Path):
@@ -59,7 +60,13 @@ class Generator:
         for ct in CategoryType:
             path = self.code / pt.value / ct.value
             md(path)
-            self._gen(Template(self.api), path / "__init__.py")
+            self._gen(
+                InitComponentsTemplate(
+                    api=self.api,
+                    package=pt,
+                    ct=ct),
+                path / "__init__.py"
+            )
 
     def gen_components(self, pt: PackageType):
         for category, Tmp, components in (
@@ -82,5 +89,6 @@ class Generator:
         # self.gen_version()
         for pt in PackageType:
             # self.gen_init(pt)
+            # if pt == PackageType.AIO:
             self.gen_components(pt)
             break
