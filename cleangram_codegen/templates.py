@@ -1,9 +1,7 @@
 import abc
-import contextlib
-import re
-from dataclasses import dataclass as dc, field
+from dataclasses import dataclass as dc
 from textwrap import wrap
-from typing import Union, List, Literal
+from typing import Literal
 
 from .comps import TELEGRAM_PATH, TELEGRAM_OBJECT
 from .enums import PackageType, CategoryType
@@ -99,6 +97,8 @@ class ComponentTemplate(PackageTemplate, abc.ABC):
                 self.a()
                 for sub in self.com.subclasses:
                     self.a(f":class:`cleangram.{sub.camel}`", tc=2)
+        self.a()
+        self.a("Reference: https://core.telegram.org/bots/api{self.com.anchor}")
         self.a('"' * 3)
 
     def arguments(self):
