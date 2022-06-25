@@ -46,7 +46,7 @@ class Generator:
         if self.is_gen:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(txt)
-                self.log.info(path)
+                self.log.info(str(path.relative_to(path.cwd())))
         else:
             self.log.info(f"{path}\n{txt}")
 
