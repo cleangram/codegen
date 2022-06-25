@@ -106,7 +106,7 @@ class ComponentTemplate(PackageTemplate, abc.ABC):
             if self.com.has_field:
                 self.i("from pydantic import Field")
             for arg in self.com.args:
-                self.a(f"{arg.field}: {arg.annotation}{arg.class_value}")
+                self.a(f"{arg.field}: {arg.annotation}{arg.field_value}")
                 if arg.desc:
                     desc = '\n\t'.join(wrap(arg.desc.text))
                     self.a(f'"""{desc}"""\n')

@@ -42,4 +42,4 @@ def parse():
             typer.echo(f"\t\tUO: " + ",".join(map(str, c.used_objects)))
             typer.echo()
             for a in c.args:
-                typer.echo(f"\t\t{a.name}: {a.annotation}{a.class_value}")
+                typer.echo(f"\t\t{a.name}: {a.annotation}{a.field_value}")

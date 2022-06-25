@@ -53,7 +53,7 @@ def parse_args(component: Component, anchors: Dict[str, Component]):
             ),
             component=component,
         )
-        if "Field" in arg.class_value:
+        if "Field" in arg.field_value:
             component.has_field = True
         component.args.append(arg)
     component.args.sort(key=lambda c: c.optional)

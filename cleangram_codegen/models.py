@@ -36,7 +36,7 @@ class Argument:
 
     @property
     @lru_cache()
-    def class_value(self):
+    def field_value(self):
         if self.name in {"from"}:
             return f" = Field(alias={self.name!r})"
         elif self.default:
