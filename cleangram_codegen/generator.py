@@ -1,7 +1,7 @@
 import logging
 import os
 import pathlib
-from typing import List, Type
+from typing import List, Type, Set
 
 import black
 import isort
@@ -10,7 +10,7 @@ from .enums import PackageType, CategoryType
 from .models import Component
 from .parser import get_api
 from .templates import Template, VersionTemplate, ObjectTemplate, PathTemplate, ComponentTemplate, \
-    InitComponentsTemplate
+    InitComponentsTemplate, BotTemplate
 
 
 def md(path: pathlib.Path):
@@ -82,13 +82,25 @@ class Generator:
                     ),
                     self.code / pt.value / category.value / f"{com.module}.py"
                 )
-                break  # render only first of object, path
-            # break
+
+    def gen_bot(self, pt: PackageType, bot_objects: List[Component]):
+        bot_dir = self.code / pt.value / "bot"
+        md(bot_dir)
+        self._gen(
+            BotTemplate(
+                api=self.api,
+                package=pt,
+                bot_objects=bot_objects
+            ),
+            bot_dir / "bot.py"
+        )
 
     def run(self):
         # self.gen_version()
+        bot_objects = sorted({o for p in self.api.paths for o in p.used_objects}, key=str)
         for pt in PackageType:
             # self.gen_init(pt)
-            # if pt == PackageType.AIO:
-            self.gen_components(pt)
-            break
+            self.gen_bot(pt, bot_objects)
+            # self.gen_components(pt)
+            # if pt == PackageType.CORE:
+            # break

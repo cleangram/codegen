@@ -82,6 +82,9 @@ class Argument:
     def __hash__(self):
         return hash(self.name)
 
+    def __str__(self):
+        return self.field
+
 
 @dc
 class Component:
@@ -148,7 +151,20 @@ class Component:
 
     @property
     def is_adjusted(self):
-        return self.name != "InputFile"
+        """
+        is add 
+
+
+        Object:
+
+        :return:
+        """
+
+        return self.name != "InputFile" or self.module not in {"base", "response", "request"}
+
+    @property
+    def is_aliased(self):
+        return True
 
     @staticmethod
     def get_typing(*args: Argument):
@@ -180,6 +196,20 @@ class Header:
     anchor: str
     tag: Tag
     components: List[Component] = field(default_factory=list)
+
+    @property
+    @lru_cache()
+    def paths(self):
+        return [c for c in self.components if c.is_path]
+
+    @property
+    @lru_cache()
+    def objects(self):
+        return [c for c in self.components if c.is_object]
+
+    def __hash__(self):
+        return hash(self.name)
+
 
 
 @dc
