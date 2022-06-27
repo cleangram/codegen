@@ -218,13 +218,18 @@ class PathTemplate(ComponentTemplate):
     def declaration(self):
         extends = []
         if self.is_core:
-            self.i("import abc")
             self.i(f"from .{self.com.parent.module} import {self.com.parent.camel}")
             extends.append(self.com.parent.camel)
-            extends.append("abc.ABC")
+            if self.com.is_adjusted:
+                self.i("import abc")
+                extends.append("abc.ABC")
         else:
             self.i(f"from ...core.paths.{self.com.module} import {self.com.camel} as _{self.com.camel}")
             extends.append(f"_{self.com.camel}")
+        if (
+                (self.is_core and ~self.com.is_adjusted) or
+                (~self.is_core and self.com.is_adjusted)
+        ):
             self.i("from ...core.objects.response import Response")
             self.write_typing(*self.com.result_typing)
             for tp in self.com.result_objects:
@@ -289,6 +294,12 @@ class InitComponentsTemplate(PackageTemplate):
         for com in coms:
             self.d(f'{com.camel!r},', 1)
         self.d("]")
+
+        if self.ct == CategoryType.OBJECT:
+            for o in self.api.objects:
+                if imports := (o.used_objects if self.is_core else o.adjusted_objects):
+                    refs = ','.join([f"{i}={i}" for i in imports])
+                    self.d(f"{o.camel}.update_forward_refs({refs})")
 
 
 @dc
