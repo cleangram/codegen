@@ -1,11 +1,13 @@
 import logging
 import os
 import pathlib
+import typing
 from typing import List, Type, Set
 
 import black
 import isort
 
+from . import const
 from .enums import PackageType, CategoryType
 from .models import Component
 from .parser import get_api
@@ -34,6 +36,7 @@ class Generator:
     def _gen(self, tmp: Template, path: pathlib.Path):
         # render
         txt = str(tmp)
+        str_path = str(path.relative_to(path.cwd()))
         if path.suffix == ".py":
             try:
                 txt = black.format_str(
@@ -46,9 +49,9 @@ class Generator:
         if self.is_gen:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(txt)
-                self.log.info(str(path.relative_to(path.cwd())))
+                self.log.info(str_path)
         else:
-            self.log.info(f"{path}\n{txt}")
+            self.log.info(f"{str_path}\n{txt}")
 
     def gen_version(self):
         self._gen(
@@ -64,7 +67,8 @@ class Generator:
                 InitComponentsTemplate(
                     api=self.api,
                     package=pt,
-                    ct=ct),
+                    ct=ct,
+                ),
                 path / "__init__.py"
             )
 
@@ -73,7 +77,9 @@ class Generator:
                 (CategoryType.OBJECT, ObjectTemplate, self.api.objects),
                 (CategoryType.PATH, PathTemplate, self.api.paths)
         ):
-            for com in components:
+            for com in components:  # type: Component
+                if pt != PackageType.CORE and not com.is_adjusted:
+                    continue
                 self._gen(
                     Tmp(
                         api=self.api,
@@ -97,10 +103,8 @@ class Generator:
 
     def run(self):
         # self.gen_version()
-        bot_objects = sorted({o for p in self.api.paths for o in p.used_objects}, key=str)
         for pt in PackageType:
-            # self.gen_init(pt)
-            self.gen_bot(pt, bot_objects)
-            # self.gen_components(pt)
-            # if pt == PackageType.CORE:
-            # break
+            if pt == PackageType.AIO:
+                self.gen_init(pt)
+                self.gen_components(pt)
+                break

@@ -167,4 +167,7 @@ def get_api() -> Api:
     content = get_content()
     api = Api(version=parse_version(content), headers=parse_headers(content))
     process_input_media(api)
+    for h in api.headers:
+        for c in h.components:
+            c.api = api
     return api

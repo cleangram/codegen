@@ -6,3 +6,7 @@ STD_TYPES = {
     "Boolean": "bool",
     "Integer": "int",
 }
+
+ALIASED_OBJECTS = {
+    "Message"
+}

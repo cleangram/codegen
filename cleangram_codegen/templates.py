@@ -158,9 +158,59 @@ class ObjectTemplate(ComponentTemplate):
                 self.i("if TYPE_CHECKING:")
                 for tp in self.com.args_objects:
                     self.i(f"from .{tp.module} import {tp.camel}", 1)
+        elif self.com.is_adjusted:
+            self.i("from __future__ import annotations")
+            self.write_typing(*self.com.adjusted_typing)
+            self.i("from typing import TYPE_CHECKING")
+            self.i("if TYPE_CHECKING:")
+            for tp in self.com.adjusted_objects:
+                self.i(f"from .{tp.module} import {tp.camel}", 1)
+            for arg in self.com.args:
+                if any([o.is_adjusted for o in arg.com_types]):
+                    self.a(f"{arg}:{arg.annotation}{arg.field_value}")
 
     def methods(self):
-        pass
+        if self.is_core:
+            self.adjusts()
+
+            if self.com.name == "Update":
+                self.i("from functools import lru_cache\n"
+                       "from typing import Tuple\n")
+
+                self.m("def __hash__(self): return hash(self.update_id)")
+
+                self.m("@lru_cache()")
+                self.m("def get_event_type(self) -> Tuple[TelegramObject, str]:")
+                for e in self.com.args[1:]:
+                    self.m(f"\tif self.{e.name}: return self.{e.name}, '{e.name}'")
+                self.m("\traise NameError(\"Event Not Found\")")
+
+                self.m("@property")
+                self.m("def event(self) -> TelegramObject: return self.event_type[0]")
+
+                self.m("event_type = property(get_event_type)")
+
+    def adjusts(self):
+        if self.com.is_adjusted:
+            self.i("from ..bot.bot import Bot")
+            self.m("def adjust(self, bot: Bot):")
+            if self.com.name == "Update":
+                self.m("self.event.adjust(bot)", 2)
+                return
+            for a in self.com.args:
+                for tp in a.com_types:
+                    if tp.is_adjusted:
+                        if a.array == 2:
+                            self.m(f"\tfor i in self.{a}:")
+                            self.m(f"\t\tfor j in i: j.adjust(bot)")
+                        elif a.array:
+                            self.m(f"\tfor i in self.{a}: i.adjust(bot)")
+                        elif a.union:
+                            self.m(f"\tif isinstance(self.{a}, {tp.camel}): self.{a}.adjust(bot)")
+                        elif a.optional:
+                            self.m(f"\tif self.{a}: self.{a}.adjust(bot)")
+                        else:
+                            self.m(f"\tself.{a}.adjust(bot)")
 
 
 @dc
@@ -190,7 +240,22 @@ class PathTemplate(ComponentTemplate):
                 self.i(f"from ..objects import {obj.camel}")
 
     def methods(self):
-        pass
+        if self.com.is_adjusted and self.is_core:
+            self.write_typing(*self.com.result_typing)
+            self.import_objects(self.com.result_objects)
+            self.i("from ..bot.bot import Bot")
+            self.m(f"def adjust(self, bot: Bot, result: {self.com.result.annotation}):")
+            res = self.com.result
+            if res.array:
+                self.m(f"\tfor r in result: r.adjust(bot)")
+            elif res.union:
+                self.m(f"\tif isinstance(result, TelegramObject): result.adjust(bot)")
+            else:
+                self.m("\tresult.adjust(bot)")
+
+    def import_objects(self, objects: Set[Component]):
+        for obj in objects:
+            self.i(f"from ..objects import {obj.camel}")
 
 
 @dc
@@ -215,20 +280,10 @@ class InitComponentsTemplate(PackageTemplate):
         coms.sort(key=str)
 
         for com in coms:
-            if (
-                com.module in {"base", "response", "input_file", "request"}
-            ) and not self.is_core:
-                self.i(f"from ...core import {com.camel}")
-            else:
+            if self.is_core or com.is_adjusted:
                 self.i(f"from .{com.module} import {com.camel}")
-
-
-        # if self.is_core or self.ct == CategoryType.PATH:
-        #     for com in coms:
-        #         self.i(f"from .{com.module} import {com.camel}")
-        # else:
-        #     for com in coms:
-        #         self.i(f"from ...core import {com.camel}")
+            else:
+                self.i(f"from ...core import {com.camel}")
 
         self.d("__all__ = [")
         for com in coms:
