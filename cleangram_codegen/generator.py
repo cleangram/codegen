@@ -105,4 +105,4 @@ class Generator:
         # self.gen_version()
         for pt in PackageType:
             self.gen_components(pt)
-            break
+            # break

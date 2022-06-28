@@ -165,11 +165,24 @@ class ObjectTemplate(ComponentTemplate):
             self.i("if TYPE_CHECKING:")
             for tp in self.com.adjusted_objects:
                 self.i(f"from .{tp.module} import {tp.camel}", 1)
+            if self.com.is_aliased:
+                for p in self.api.paths:
+                    if p.name == "sendMessage":
+                        self.write_typing(*p.used_typing)
+                        for c in p.used_objects:
+                            if c == self.com:
+                                continue
+                            if c.is_adjusted:
+                                self.i(f"from .{c.module} import {c.camel}", 1)
+                            else:
+                                self.i(f"from ...core import {c.camel}", 1)
             for arg in self.com.args:
                 if any([o.is_adjusted for o in arg.com_types]):
                     self.a(f"{arg}:{arg.annotation}{arg.field_value}")
 
     def methods(self):
+        if self.com.is_aliased:
+            self.alias()
         if self.is_core:
             self.adjusts()
 
@@ -189,6 +202,30 @@ class ObjectTemplate(ComponentTemplate):
                 self.m("def event(self) -> TelegramObject: return self.event_type[0]")
 
                 self.m("event_type = property(get_event_type)")
+
+    def alias(self):
+        if self.com.name == "Message":
+            path = [p for p in self.api.paths if p.name == "sendMessage"][0]
+            self.write_answer(path, "answer", "chat_id", "self.chat.id")
+
+    def write_answer(self, path: Component, name: str, param: str, original: str):
+        if self.is_core:
+            self.m("@abc.abstractmethod")
+        signature = ["self"]
+        for a in path.args:
+            if a.name != param:
+                signature.append(
+                    f"{a}{'' if self.is_core else ':'+a.annotation}{a.method_value}"
+                )
+        result = '' if self.is_core else f" -> {path.result.annotation}"
+        self.m(f"{self.async_}def {name}({','.join(signature)}){result}:")
+        if self.is_core:
+            self.m("...", 2)
+        else:
+            declaration = [f"{param}={original}", *[
+                f"{a.field}={a.field}" for a in path.args if a.field != param
+            ]]
+            self.m(f"return {self.await_}self.bot.{path.snake}({','.join(declaration)})", 2)
 
     def adjusts(self):
         if self.com.is_adjusted:
