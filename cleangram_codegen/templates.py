@@ -3,7 +3,7 @@ from dataclasses import dataclass as dc
 from textwrap import wrap
 from typing import Literal, List, Set
 
-from . import comps
+from . import comps, const
 from .comps import TELEGRAM_PATH, TELEGRAM_OBJECT
 from .enums import PackageType, CategoryType
 from .models import Api, Component
@@ -269,15 +269,18 @@ class PathTemplate(ComponentTemplate):
         self.m(f"def prepare(self, bot: Bot):")
         if self.com.name == "sendMediaGroup":
             self.m("for m in self.media:", 2)
+            self.m(f"m.parse_mode = bot.config.preset.parse_mode(m.parse_mode)", 3)
             self.m("m.media = self.attach(m.media)", 3)
             self.m("if hasattr(m.media, 'thumb'): m.thumb = self.attach(m.thumb)", 3)
         else:
             for a in self.com.args:
                 if self.api.input_file in a.com_types:
                     if "attach://" in a.desc.text:
-                        self.m(f"self.{a.name} = self.attach(self.{a.name})", 2)
+                        self.m(f"self.{a} = self.attach(self.{a})", 2)
                     else:
-                        self.m(f"self.attach(self.{a.field}, '{a.field}')", 2)
+                        self.m(f"self.attach(self.{a}, '{a}')", 2)
+                elif a.name in const.PRESETS:
+                    self.m(f"self.{a} = bot.config.preset.{a}(self.{a})", 2)
 
     def import_objects(self, objects: Set[Component]):
         for obj in objects:

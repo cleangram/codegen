@@ -209,7 +209,8 @@ class Component:
     def is_prepared(self):
         return self.is_path and (
                 self.api.input_file in self.used_objects or
-                self.name == "sendMediaGroup"
+                self.name == "sendMediaGroup" or
+                any([a.name in const.PRESETS for a in self.args])
         )
 
     def __hash__(self):

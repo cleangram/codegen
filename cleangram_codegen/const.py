@@ -10,3 +10,6 @@ STD_TYPES = {
 ALIASED_OBJECTS = {
     "Message"
 }
+PRESETS = {
+    "parse_mode"
+}
