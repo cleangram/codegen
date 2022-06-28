@@ -204,6 +204,14 @@ class Component:
             a for a in self.args if any([c.is_adjusted for c in a.com_types])
         })
 
+    @property
+    @lru_cache()
+    def is_prepared(self):
+        return self.is_path and (
+                self.api.input_file in self.used_objects or
+                self.name == "sendMediaGroup"
+        )
+
     def __hash__(self):
         return hash(self.name)
 
@@ -232,7 +240,6 @@ class Header:
 
     def __hash__(self):
         return hash(self.name)
-
 
 
 @dc
@@ -297,3 +304,17 @@ class Api:
                 for p in self.paths
                 if any([o in self.adjusted_objects for o in p.result_objects])
                 }
+
+    @property
+    @lru_cache()
+    def input_file(self):
+        for o in self.objects:
+            if o.name == "InputFile":
+                return o
+
+    @property
+    @lru_cache()
+    def update(self):
+        for o in self.objects:
+            if o.name == "Update":
+                return o

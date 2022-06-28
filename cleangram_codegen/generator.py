@@ -104,7 +104,5 @@ class Generator:
     def run(self):
         # self.gen_version()
         for pt in PackageType:
-            self.gen_init(pt)
             self.gen_components(pt)
-            if pt == PackageType.AIO:
-                break
+            break

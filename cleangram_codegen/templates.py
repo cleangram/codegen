@@ -245,18 +245,39 @@ class PathTemplate(ComponentTemplate):
                 self.i(f"from ..objects import {obj.camel}")
 
     def methods(self):
-        if self.com.is_adjusted and self.is_core:
-            self.write_typing(*self.com.result_typing)
-            self.import_objects(self.com.result_objects)
-            self.i("from ..bot.bot import Bot")
-            self.m(f"def adjust(self, bot: Bot, result: {self.com.result.annotation}):")
-            res = self.com.result
-            if res.array:
-                self.m(f"\tfor r in result: r.adjust(bot)")
-            elif res.union:
-                self.m(f"\tif isinstance(result, TelegramObject): result.adjust(bot)")
-            else:
-                self.m("\tresult.adjust(bot)")
+        if self.is_core:
+            if self.com.is_adjusted:
+                self.adjust()
+            if self.com.is_prepared:
+                self.prepare()
+
+    def adjust(self):
+        self.write_typing(*self.com.result_typing)
+        self.import_objects(self.com.result_objects)
+        self.i("from ..bot.bot import Bot")
+        self.m(f"def adjust(self, bot: Bot, result: {self.com.result.annotation}):")
+        res = self.com.result
+        if res.array:
+            self.m(f"\tfor r in result: r.adjust(bot)")
+        elif res.union:
+            self.m(f"\tif isinstance(result, TelegramObject): result.adjust(bot)")
+        else:
+            self.m("\tresult.adjust(bot)")
+
+    def prepare(self):
+        self.i(f"from ..bot.bot import Bot")
+        self.m(f"def prepare(self, bot: Bot):")
+        if self.com.name == "sendMediaGroup":
+            self.m("for m in self.media:", 2)
+            self.m("m.media = self.attach(m.media)", 3)
+            self.m("if hasattr(m.media, 'thumb'): m.thumb = self.attach(m.thumb)", 3)
+        else:
+            for a in self.com.args:
+                if self.api.input_file in a.com_types:
+                    if "attach://" in a.desc.text:
+                        self.m(f"self.{a.name} = self.attach(self.{a.name})", 2)
+                    else:
+                        self.m(f"self.attach(self.{a.field}, '{a.field}')", 2)
 
     def import_objects(self, objects: Set[Component]):
         for obj in objects:
