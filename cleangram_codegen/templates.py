@@ -84,7 +84,6 @@ class PackageTemplate(Template):
             self.i(f"from typing import {tp}")
 
 
-
 @dc
 class ComponentTemplate(PackageTemplate, abc.ABC):
     com: Component = None
@@ -166,10 +165,9 @@ class ObjectTemplate(ComponentTemplate):
             for tp in self.com.adjusted_objects:
                 self.i(f"from .{tp.module} import {tp.camel}", 1)
             if self.com.is_aliased:
-                for p in self.api.paths:
-                    if p.name == "sendMessage":
-                        self.write_typing(*p.used_typing)
-                        for c in p.used_objects:
+                for path in self.api.paths:
+                    if path.name in const.ALIASED_OBJECTS[self.com.name]:
+                        for c in path.used_objects:
                             if c == self.com:
                                 continue
                             if c.is_adjusted:
@@ -204,27 +202,29 @@ class ObjectTemplate(ComponentTemplate):
                 self.m("event_type = property(get_event_type)")
 
     def alias(self):
-        if self.com.name == "Message":
-            path = [p for p in self.api.paths if p.name == "sendMessage"][0]
-            self.write_answer(path, "answer", "chat_id", "self.chat.id")
+        if self.com.is_adjusted:
+            for path in self.api.paths:
+                if aliased_path := const.ALIASED_OBJECTS[self.com.name].get(path.name, None):
+                    self.write_typing(*path.used_typing)
+                    for name, params in aliased_path.items():
+                        self.write_answer(path, name, params)
 
-    def write_answer(self, path: Component, name: str, param: str, original: str):
+    def write_answer(self, path: Component, name: str, params: dict):
         if self.is_core:
             self.m("@abc.abstractmethod")
         signature = ["self"]
         for a in path.args:
-            if a.name != param:
-                signature.append(
-                    f"{a}{'' if self.is_core else ':'+a.annotation}{a.method_value}"
-                )
+            if a.name not in params.keys():
+                signature.append(f"{a}{'' if self.is_core else ':'+a.annotation}{a.method_value}")
         result = '' if self.is_core else f" -> {path.result.annotation}"
         self.m(f"{self.async_}def {name}({','.join(signature)}){result}:")
         if self.is_core:
             self.m("...", 2)
         else:
-            declaration = [f"{param}={original}", *[
-                f"{a.field}={a.field}" for a in path.args if a.field != param
-            ]]
+            declaration = [
+                f"{a}={params[a.name]}" if a.name in params.keys() else f"{a}={a}"
+                for a in path.args
+            ]
             self.m(f"return {self.await_}self.bot.{path.snake}({','.join(declaration)})", 2)
 
     def adjusts(self):

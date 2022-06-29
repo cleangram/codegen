@@ -8,7 +8,9 @@ STD_TYPES = {
 }
 
 ALIASED_OBJECTS = {
-    "Message"
+    "Message": {
+        "sendMessage": {"answer": {"chat_id": "chat.id"}}
+    }
 }
 PRESETS = {
     "parse_mode"

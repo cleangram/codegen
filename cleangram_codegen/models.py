@@ -280,7 +280,7 @@ class Api:
     @property
     @lru_cache()
     def aliased_objects(self):
-        return [o for o in self.objects if o.name in const.ALIASED_OBJECTS]
+        return [o for o in self.objects if o.name in const.ALIASED_OBJECTS.keys()]
 
     @property
     @lru_cache()
