@@ -1,5 +1,5 @@
 import abc
-from dataclasses import dataclass as dc
+from dataclasses import dataclass as dc, field
 from textwrap import wrap
 from typing import Literal, List, Set
 
@@ -35,6 +35,9 @@ class PackageTemplate(Template):
     declaration_section: str = ""
     arguments_section: str = ""
     methods_section: str = ""
+    typing_imports: List[str] = field(default_factory=list)
+    object_imports: List[Component] = field(default_factory=list)
+    type_checking_imports: List[Component] = field(default_factory=list)
 
     def __call__(
             self,
@@ -65,6 +68,21 @@ class PackageTemplate(Template):
         self("methods", val, tc, nl)
 
     def __str__(self):
+        if self.type_checking_imports:
+            self.typing_imports.append("TYPE_CHECKING")
+
+        if self.typing_imports:
+            for tp in self.typing_imports:
+                self.i(f"from typing import {tp}")
+
+        for obj in self.object_imports:
+            self.write_import(obj)
+
+        if self.type_checking_imports:
+            self.i("if TYPE_CHECKING:")
+            for obj in self.type_checking_imports:
+                self.write_import(obj, tc=1)
+
         return "\n".join([
             self.import_section,
             self.declaration_section,
@@ -79,9 +97,12 @@ class PackageTemplate(Template):
         self.await_ = "await " if self.is_aio else ""
         self.async_ = "async " if self.is_aio else ""
 
-    def write_typing(self, *types: str):
-        for tp in types:
-            self.i(f"from typing import {tp}")
+    def write_import(self, *objects: Component, tc: int = 0):
+        for obj in objects:
+            if self.is_core or obj.is_adjusted:
+                self.i(f"from .{obj.module} import {obj.camel}", tc=tc)
+            else:
+                self.i(f"from ...core import {obj.camel}", tc=tc)
 
 
 @dc
@@ -126,6 +147,9 @@ class ComponentTemplate(PackageTemplate, abc.ABC):
         self.description()
         self.arguments()
         self.methods()
+        for lst in [self.type_checking_imports, self.object_imports]:
+            if self.com in lst:
+                lst.remove(self.com)
 
 
 @dc
@@ -138,7 +162,8 @@ class ObjectTemplate(ComponentTemplate):
     def declaration(self):
         extends = []
         if self.is_core:
-            self.i(f"from .{self.com.parent.module} import {self.com.parent.camel}")
+            self.object_imports.append(self.com.parent)
+            # self.i(f"from .{self.com.parent.module} import {self.com.parent.camel}")
             extends.append(self.com.parent.camel)
             if self.com.is_adjusted:
                 self.i("import abc")
@@ -151,29 +176,32 @@ class ObjectTemplate(ComponentTemplate):
     def arguments(self):
         super(ObjectTemplate, self).arguments()
         if self.is_core:
-            self.write_typing(*self.com.args_typing)
-            if self.com.args_objects:
-                self.i("from typing import TYPE_CHECKING")
-                self.i("if TYPE_CHECKING:")
-                for tp in self.com.args_objects:
-                    self.i(f"from .{tp.module} import {tp.camel}", 1)
+            self.typing_imports.extend(self.com.args_typing)
+            self.type_checking_imports.extend(self.com.args_objects)
+            # if self.com.args_objects:
+            #     self.i("from typing import TYPE_CHECKING")
+            #     self.i("if TYPE_CHECKING:")
+            #     for tp in self.com.args_objects:
+            #         self.i(f"from .{tp.module} import {tp.camel}", 1)
         elif self.com.is_adjusted:
             self.i("from __future__ import annotations")
-            self.write_typing(*self.com.adjusted_typing)
-            self.i("from typing import TYPE_CHECKING")
-            self.i("if TYPE_CHECKING:")
-            for tp in self.com.adjusted_objects:
-                self.i(f"from .{tp.module} import {tp.camel}", 1)
+            self.typing_imports.extend(self.com.adjusted_typing)
+            self.type_checking_imports.extend(self.com.adjusted_objects)
+            # self.i("from typing import TYPE_CHECKING")
+            # self.i("if TYPE_CHECKING:")
+            # for tp in self.com.adjusted_objects:
+            #     self.i(f"from .{tp.module} import {tp.camel}", 1)
             if self.com.is_aliased:
                 for path in self.api.paths:
                     if path.name in const.ALIASED_OBJECTS[self.com.name]:
-                        for c in path.used_objects:
-                            if c == self.com:
-                                continue
-                            if c.is_adjusted:
-                                self.i(f"from .{c.module} import {c.camel}", 1)
-                            else:
-                                self.i(f"from ...core import {c.camel}", 1)
+                        self.type_checking_imports.extend(path.used_objects)
+                        # for c in path.used_objects:
+                        #     if c == self.com:
+                        #         continue
+                        #     if c.is_adjusted:
+                        #         self.i(f"from .{c.module} import {c.camel}", 1)
+                        #     else:
+                        #         self.i(f"from ...core import {c.camel}", 1)
             for arg in self.com.args:
                 if any([o.is_adjusted for o in arg.com_types]):
                     self.a(f"{arg}:{arg.annotation}{arg.field_value}")
@@ -185,9 +213,8 @@ class ObjectTemplate(ComponentTemplate):
             self.adjusts()
 
             if self.com.name == "Update":
-                self.i("from functools import lru_cache\n"
-                       "from typing import Tuple\n")
-
+                self.i("from functools import lru_cache")
+                self.typing_imports.append("Tuple")
                 self.m("def __hash__(self): return hash(self.update_id)")
 
                 self.m("@lru_cache()")
@@ -205,7 +232,8 @@ class ObjectTemplate(ComponentTemplate):
         if self.com.is_adjusted:
             for path in self.api.paths:
                 if aliased_path := const.ALIASED_OBJECTS[self.com.name].get(path.name, None):
-                    self.write_typing(*path.used_typing)
+                    if not self.is_core:
+                        self.typing_imports.extend(path.used_typing)
                     for name, params in aliased_path.items():
                         self.write_answer(path, name, params)
 
@@ -222,7 +250,7 @@ class ObjectTemplate(ComponentTemplate):
             self.m("...", 2)
         else:
             declaration = [
-                f"{a}={params[a.name]}" if a.name in params.keys() else f"{a}={a}"
+                f"{a}=self.{params[a.name]}" if a.name in params.keys() else f"{a}={a}"
                 for a in path.args
             ]
             self.m(f"return {self.await_}self.bot.{path.snake}({','.join(declaration)})", 2)
@@ -234,20 +262,20 @@ class ObjectTemplate(ComponentTemplate):
             if self.com.name == "Update":
                 self.m("self.event.adjust(bot)", 2)
                 return
-            for a in self.com.args:
-                for tp in a.com_types:
+            for arg in self.com.args:
+                for tp in arg.com_types:
                     if tp.is_adjusted:
-                        if a.array == 2:
-                            self.m(f"\tfor i in self.{a}:")
+                        if arg.array == 2:
+                            self.m(f"\tfor i in self.{arg}:")
                             self.m(f"\t\tfor j in i: j.adjust(bot)")
-                        elif a.array:
-                            self.m(f"\tfor i in self.{a}: i.adjust(bot)")
-                        elif a.union:
-                            self.m(f"\tif isinstance(self.{a}, {tp.camel}): self.{a}.adjust(bot)")
-                        elif a.optional:
-                            self.m(f"\tif self.{a}: self.{a}.adjust(bot)")
+                        elif arg.array:
+                            self.m(f"\tfor i in self.{arg}: i.adjust(bot)")
+                        elif arg.union:
+                            self.m(f"\tif isinstance(self.{arg}, {tp.camel}): self.{arg}.adjust(bot)")
+                        elif arg.optional:
+                            self.m(f"\tif self.{arg}: self.{arg}.adjust(bot)")
                         else:
-                            self.m(f"\tself.{a}.adjust(bot)")
+                            self.m(f"\tself.{arg}.adjust(bot)")
 
 
 @dc
@@ -267,8 +295,8 @@ class PathTemplate(ComponentTemplate):
                 (self.is_core and ~self.com.is_adjusted) or
                 (~self.is_core and self.com.is_adjusted)
         ):
+            self.typing_imports.extend(self.com.result_typing)
             self.i("from ...core.objects.response import Response")
-            self.write_typing(*self.com.result_typing)
             for tp in self.com.result_objects:
                 self.i(f"from ..objects import {tp.camel}")
             extends.append(f"response=Response[{self.com.result.annotation}]")
@@ -277,7 +305,7 @@ class PathTemplate(ComponentTemplate):
     def arguments(self):
         super(PathTemplate, self).arguments()
         if self.is_core:
-            self.write_typing(*self.com.args_typing)
+            self.typing_imports.extend(self.com.args_typing)
             for obj in self.com.args_objects:
                 self.i(f"from ..objects import {obj.camel}")
 
@@ -289,7 +317,7 @@ class PathTemplate(ComponentTemplate):
                 self.prepare()
 
     def adjust(self):
-        self.write_typing(*self.com.result_typing)
+        self.typing_imports.extend(self.com.result_typing)
         self.import_objects(self.com.result_objects)
         self.i("from ..bot.bot import Bot")
         self.m(f"def adjust(self, bot: Bot, result: {self.com.result.annotation}):")
@@ -297,6 +325,7 @@ class PathTemplate(ComponentTemplate):
         if res.array:
             self.m(f"\tfor r in result: r.adjust(bot)")
         elif res.union:
+            self.i("from ..objects import TelegramObject")
             self.m(f"\tif isinstance(result, TelegramObject): result.adjust(bot)")
         else:
             self.m("\tresult.adjust(bot)")
