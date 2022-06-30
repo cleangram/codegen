@@ -394,7 +394,6 @@ class InitComponentsTemplate(PackageTemplate):
 
 @dc
 class BotTemplate(PackageTemplate):
-    bot_objects: List[Component] = None
 
     def __post_init__(self):
         super(BotTemplate, self).__post_init__()
@@ -418,7 +417,7 @@ class BotTemplate(PackageTemplate):
             self.i("from ..objects import User", 1)
         else:
             self.i(f"from ..paths import ({','.join(map(str, self.api.paths))})")
-            self.i(f"from ..objects import ({','.join(map(str, self.bot_objects))})")
+            self.i(f"from ..objects import ({','.join(map(str, self.api.paths_objects))})")
             self.i(f"from ..objects import T")
         self.i("from ..paths import TelegramPath", int(self.is_core))
 

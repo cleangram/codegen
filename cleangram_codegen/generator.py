@@ -89,20 +89,20 @@ class Generator:
                     self.code / pt.value / category.value / f"{com.module}.py"
                 )
 
-    def gen_bot(self, pt: PackageType, bot_objects: List[Component]):
+    def gen_bot(self, pt: PackageType):
         bot_dir = self.code / pt.value / "bot"
         md(bot_dir)
         self._gen(
             BotTemplate(
                 api=self.api,
-                package=pt,
-                bot_objects=bot_objects
+                package=pt
             ),
             bot_dir / "bot.py"
         )
 
     def run(self):
-        # self.gen_version()
+        self.gen_version()
         for pt in PackageType:
+            self.gen_init(pt)
             self.gen_components(pt)
-            # break
+            self.gen_bot(pt)
